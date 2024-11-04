@@ -1,0 +1,88 @@
+diff --git a/av/filter/context.pyx b/av/filter/context.pyx
+index b820d3d..15c5e2a 100644
+--- a/av/filter/context.pyx
++++ b/av/filter/context.pyx
+@@ -1,5 +1,7 @@
+ import weakref
+ 
++cimport libav as lib
++
+ from av.audio.frame cimport alloc_audio_frame
+ from av.dictionary cimport _Dictionary
+ from av.dictionary import Dictionary
+@@ -132,3 +134,10 @@ cdef class FilterContext:
+         frame._init_user_attributes()
+         frame.time_base = avrational_to_fraction(&self.ptr.inputs[0].time_base)
+         return frame
++
++    def get_input_tb(self, input_idx):
++        return avrational_to_fraction(&self.ptr.inputs[0].time_base)
++
++    def get_input_frame_rate(self, input_idx):
++        ret = avrational_to_fraction(&self.ptr.inputs[0].frame_rate)
++        return ret
+diff --git a/av/filter/graph.pyx b/av/filter/graph.pyx
+index c1a2d7a..60b64e8 100644
+--- a/av/filter/graph.pyx
++++ b/av/filter/graph.pyx
+@@ -222,3 +222,12 @@ cdef class Graph:
+             raise ValueError(f"can only auto-pull with single sink; found {nsinks}")
+ 
+         return vsinks[0].pull()
++
++    @property
++    def nb_threads(self):
++        return self.ptr.nb_threads
++
++    @nb_threads.setter
++    def nb_threads(self, n):
++        self.ptr.nb_threads = n
++        return
+diff --git a/av/frame.pyx b/av/frame.pyx
+index b3ffff9..8a938f5 100644
+--- a/av/frame.pyx
++++ b/av/frame.pyx
+@@ -146,3 +146,7 @@ cdef class Frame:
+ 
+         ret = lib.av_frame_make_writable(self.ptr)
+         err_check(ret)
++
++    @property
++    def duration(self):
++        return self.ptr.duration
+diff --git a/include/libavcodec/avcodec.pxd b/include/libavcodec/avcodec.pxd
+index 9add5ae..1f0ee0f 100644
+--- a/include/libavcodec/avcodec.pxd
++++ b/include/libavcodec/avcodec.pxd
+@@ -399,6 +399,7 @@ cdef extern from "libavcodec/avcodec.h" nogil:
+         AVColorPrimaries color_primaries
+         AVColorTransferCharacteristic color_trc
+         AVColorSpace colorspace
++        int64_t duration
+ 
+     cdef AVFrame* avcodec_alloc_frame()
+ 
+diff --git a/include/libavfilter/avfilter.pxd b/include/libavfilter/avfilter.pxd
+index dd3e91d..a88e7c1 100644
+--- a/include/libavfilter/avfilter.pxd
++++ b/include/libavfilter/avfilter.pxd
+@@ -82,6 +82,7 @@ cdef extern from "libavfilter/avfilter.h" nogil:
+         int sample_rate
+         int format
+         AVRational time_base
++        AVRational frame_rate
+ 
+     # custom
+     cdef set pyav_get_available_filters()
+diff --git a/include/libavfilter/avfiltergraph.pxd b/include/libavfilter/avfiltergraph.pxd
+index b773063..41d02e2 100644
+--- a/include/libavfilter/avfiltergraph.pxd
++++ b/include/libavfilter/avfiltergraph.pxd
+@@ -4,6 +4,7 @@ cdef extern from "libavfilter/avfilter.h" nogil:
+     cdef struct AVFilterGraph:
+         int nb_filters
+         AVFilterContext **filters
++        int nb_threads
+ 
+     cdef struct AVFilterInOut:
+         char *name
