@@ -2,7 +2,7 @@
 
 # FFpie
 
-an FFmpeg emulator built on PyAV, which aims to mimic FFmpeg as much as possible.
+an FFmpeg emulator built on PyAV that aims to mimic FFmpeg as much as possible.
 
 it provides:
 
