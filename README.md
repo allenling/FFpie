@@ -18,37 +18,6 @@ build your own PyAV from the source.
 
 and you can download FFmpeg-n6.1.1 from [here.](https://github.com/BtbN/FFmpeg-Builds/releases/)
 
-# motivation
-
-in some cases, just mere interfaces exposed to python are not enough for us, and there are some key pices missing to run
-your code to process a video file as FFmpeg.
-
-e.g. by PyAV, you can easily push decoded frames to a graph, and pull filtered frames from the graph, but when frames come
-out the other end, they probably won't go immediately into the encoder in FFmpeg, they will be "sampled" before encoding!
-
-you can imagine that there is a sampler conceptually standing in between your graph and the encoder, and it decides which frame
-should be sent to the encoder, some frames might be dropped or duplicated in certain sampling policy, or as known as fps_mode.
-
-so when you speed up or slow down your video, you might have to simple the frames yourself.
-
-here we implement the cfr fps_mode in python, and in some cases, cfr is all you need, then you can just take it and make
-life easier.
-
-here is another example.
-
-in real life, this is generic that we would run graphs in a cluster of GPU machines, and you have to store the graph and upload
-it to the cloud, the graph might be a very big and large piece of plain text, sometimes that long length won't bother you,
-but sometimes it matters.
-
-here we introduce graph serialization to help you reduce the size, you can just serialize your graph to a short bytes array, and
-deserialize and run the graph anywhere, and take one step further, you can even say compress the serilaized bytes into a
-token string that is much shorter than the serialized string.
-
-and to help you understand how FFmpeg works better, we break down FFmpeg video processing into three to four stages, and
-then we bridge those gaps between mere interfaces exposion and process flow integrity for you.
-
-simply put, FFpie is an augment wrap to PyAV to enable you take advantage of full or a subset of FFmpeg programmatically.
-
 # usage
 
 (more in the `examples` directory)
@@ -168,6 +137,37 @@ my_clip.run()
 ```
 
 a clip will do most of the things for you, setting up framerate for the output file, choosing a frames sampler, and whatnot.
+
+# motivation
+
+in some cases, just mere interfaces exposed to python are not enough for us, and there are some key pices missing to run
+your code to process a video file as FFmpeg.
+
+e.g. by PyAV, you can easily push decoded frames to a graph, and pull filtered frames from the graph, but when frames come
+out the other end, they probably won't go immediately into the encoder in FFmpeg, they will be "sampled" before encoding!
+
+you can imagine that there is a sampler conceptually standing in between your graph and the encoder, and it decides which frame
+should be sent to the encoder, some frames might be dropped or duplicated in certain sampling policy, or as known as fps_mode.
+
+so when you speed up or slow down your video, you might have to simple the frames yourself.
+
+here we implement the cfr fps_mode in python, and in some cases, cfr is all you need, then you can just take it and make
+life easier.
+
+here is another example.
+
+in real life, this is generic that we would run graphs in a cluster of GPU machines, and you have to store the graph and upload
+it to the cloud, the graph might be a very big and large piece of plain text, sometimes that long length won't bother you,
+but sometimes it matters.
+
+here we introduce graph serialization to help you reduce the size, you can just serialize your graph to a short bytes array, and
+deserialize and run the graph anywhere, and take one step further, you can even say compress the serilaized bytes into a
+token string that is much shorter than the serialized string.
+
+and to help you understand how FFmpeg works better, we break down FFmpeg video processing into three to four stages, and
+then we bridge those gaps between mere interfaces exposion and process flow integrity for you.
+
+simply put, FFpie is an augment wrap to PyAV to enable you take advantage of full or a subset of FFmpeg programmatically.
 
 # breakdowns on FFmpeg
 
