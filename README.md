@@ -57,36 +57,6 @@ s.close()
 if you do not specify an encoder for your output container by leaving the parameter `video_encoder` alone, then oc will use the
 default video stream that created by the oc to encode the frames.
 
-you can serialize and deserialize your graph.
-
-```python
-
-import ffpie
-v1_path = r"D:\Downloads\yellowstone.mp4"
-v2_path = r"D:\Downloads\yosemiteA.mp4"
-v3_path = r"D:\Downloads\73602_85f0a86824d34462bb728c.png"
-s1 = ffpie.Source(v1_path)
-s2 = ffpie.Source(v2_path)
-lay_s = ffpie.ImageReader(v3_path)
-v1 = ffpie.Buffer(template=s1.video_stream, name="v1")
-v2 = ffpie.Buffer(template=s2.video_stream, name="v2")
-v3 = ffpie.Buffer(template=lay_s.stream, name="v3")
-#
-g = ffpie.Graph(v1, v3)
-b1_start, b1_end = g.link_filters(ffpie.Split(name="s1"))
-b2_start, b2_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.HFlip())
-b3_start, b3_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.VFlip())
-b4_start, b4_end = g.link_filters(ffpie.HStack(), ffpie.Overlay(name="o1"), ffpie.HFlip())
-g.link(b1_end, b2_start, 0, 0)
-g.link(b1_end, b3_start, 1, 0)
-g.link(b2_end, b4_start, 0, 0)
-g.link(b3_end, b4_start, 0, 1)
-#
-bytes_data, inputs = g.serialize()
-new_g = ffpie.Graph.deserialize(bytes_data)
-new_g.setup_inputs(*inputs)
-```
-
 speed up your video, and apply the cfr sampler to frames coming out from the graph.
 
 ````python
@@ -138,6 +108,35 @@ my_clip.run()
 
 a clip will do most of the things for you, setting up framerate for the output file, choosing a frames sampler, and whatnot.
 
+you can serialize and deserialize your graph.
+
+```python
+
+import ffpie
+v1_path = r"D:\Downloads\yellowstone.mp4"
+v2_path = r"D:\Downloads\yosemiteA.mp4"
+v3_path = r"D:\Downloads\73602_85f0a86824d34462bb728c.png"
+s1 = ffpie.Source(v1_path)
+s2 = ffpie.Source(v2_path)
+lay_s = ffpie.ImageReader(v3_path)
+v1 = ffpie.Buffer(template=s1.video_stream, name="v1")
+v2 = ffpie.Buffer(template=s2.video_stream, name="v2")
+v3 = ffpie.Buffer(template=lay_s.stream, name="v3")
+#
+g = ffpie.Graph(v1, v3)
+b1_start, b1_end = g.link_filters(ffpie.Split(name="s1"))
+b2_start, b2_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.HFlip())
+b3_start, b3_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.VFlip())
+b4_start, b4_end = g.link_filters(ffpie.HStack(), ffpie.Overlay(name="o1"), ffpie.HFlip())
+g.link(b1_end, b2_start, 0, 0)
+g.link(b1_end, b3_start, 1, 0)
+g.link(b2_end, b4_start, 0, 0)
+g.link(b3_end, b4_start, 0, 1)
+#
+bytes_data, inputs = g.serialize()
+new_g = ffpie.Graph.deserialize(bytes_data)
+new_g.setup_inputs(*inputs)
+```
 # motivation
 
 in some cases, just mere interfaces exposed to python are not enough for us, and there are some key pices missing to run
