@@ -22,14 +22,14 @@ and you can download FFmpeg-n6.1.1 from [here.](https://github.com/BtbN/FFmpeg-B
 
 (more in the `examples` directory)
 
-when trasncodeing your video, you can pass in your own encoder to do something before and after encoding a frame.
+when trasncodeing your video, you can pass  your own encoder in to do something before and after encoding a frame.
 
 here an encoder is more than just a "pure" encoder, we will pass the frames out of your graph, or from decoder if no graph,
 into your encoder, then you can do anything before and after encoding.
 
 `ffpie.H264Encoder` is a built-in encoder that is capable of labeling a frame as keyframe every N frames before encoding.
 
-and force_id feature is added as a solo plugin at `ffpie.encoder.utils`, which means you can adopt it without introducing
+and that forcing idr feature is packed as a solo plugin at `ffpie.encoder.utils`, which means you can adopt it without introducing
 other pieces of code.
 
 ```python
