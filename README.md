@@ -22,7 +22,7 @@ and you can download FFmpeg-n6.1.1 from [here.](https://github.com/BtbN/FFmpeg-B
 
 (more in the `examples` directory)
 
-when trasncode your video, you can pass in your own encoder to do something before and after encoding a frame.
+when trasncodeing your video, you can pass in your own encoder to do something before and after encoding a frame.
 
 here an encoder is more than just a "pure" encoder, we will pass the frames out of your graph, or from decoder if no graph,
 into your encoder, then you can do anything before and after encoding.
