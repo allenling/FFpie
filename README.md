@@ -166,7 +166,7 @@ token string that is much shorter than the serialized string.
 and to help you understand how FFmpeg works better, we break down FFmpeg video processing into three to four stages, and
 then we bridge those gaps between mere interfaces exposion and process flow integrity for you.
 
-simply put, FFpie is an augment wrap to PyAV to enable you take advantage of full or a subset of FFmpeg programmatically.
+simply put, FFpie is an augment wrap to PyAV to enable you to take advantage of full or a subset of FFmpeg programmatically.
 
 # breakdowns on FFmpeg
 
