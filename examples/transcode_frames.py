@@ -93,11 +93,11 @@ def remux_transcodings():
 
 
 def main():
-    # transcode_video_frames()
+    transcode_video_frames()
     # transcode_audio_frames()
     # oc_with_encoder()
     # oc_with_stream()
-    remux_transcodings()
+    # remux_transcodings()
     return
 
 

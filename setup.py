@@ -21,7 +21,7 @@ setup(name="ffpie",
       packages=find_packages(include=["ffpie", "ffpie.*"]),
       tests_require=tests_require,
       extras_require={"test": tests_require},
-      install_requires=["av>=13.0.0", "redis"],
+      install_requires=["av>=13.0.0", "msgpack", "numpy"],
       python_requires=">= 3.9",
       classifiers=[
           "Programming Language :: Python :: 3",

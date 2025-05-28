@@ -1,13 +1,11 @@
 
 
 
-import redis
 import cv2 as cv
 
 import ffpie
 
-
-rcon = redis.Redis()
+from ffpie.graph.token import RedisToken
 
 
 
@@ -42,7 +40,7 @@ def graph_serialization():
     bytes1, leaves1 = g.serialize()
     print(bytes1)
     print(leaves1)
-    g.setup_input_output()
+    g.mark_input_output()
     bytes2, leaves2 = g.serialize()
     print(bytes2)
     print(leaves2)
@@ -60,25 +58,28 @@ def graph_serialization():
     print(bytes3)
     print(leaves3)
     print(bytes1 == bytes3)
-    new_g.setup_inputs(*preorder_inputs)
+    new_g.set_inputs(*preorder_inputs)
     bytes4, leaves4 = new_g.serialize()
     print(bytes4)
     print(leaves4)
     print(bytes1 == bytes4)
     #
-    token1, leaves5 = new_g.tokenize(rcon)
+    redis_token = RedisToken()
+    redis_token.con.delete(redis_token.chunk_zset_key)
+    redis_token.con.delete(redis_token.chunk_amount_key)
+    bytes5, leaves5 = new_g.serialize()
+    token1 = redis_token.get_token(bytes5)
     print(token1)
     print(leaves5)
-    tg = ffpie.Graph.from_token(token1, rcon)
-    bytes5, leaves6 = tg.serialize()
-    print(bytes5)
-    print(leaves6)
     print(bytes1 == bytes5)
-    token2, leaves7 = tg.tokenize(rcon)
-    print(token2)
-    print(leaves6)
-    print(token1 == token2)
-    tg.setup_inputs(*preorder_inputs)
+    #
+    bytes6 = redis_token.from_token(token1)
+    tg = ffpie.Graph.deserialize(bytes6)
+    bytes7, leaves7 = tg.serialize()
+    print(bytes7)
+    print(leaves7)
+    print(bytes1 == bytes7)
+    tg.set_inputs(*preorder_inputs)
     #
     for f1, f2 in zip(s1.read_video_frames(), lay_s.read_video_frames()):
         outframe = tg.apply_frames(f1, f2)[0]

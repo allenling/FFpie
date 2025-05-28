@@ -74,13 +74,24 @@ class H264Encoder(EncoderAbs):
     def __init__(self, codec_conf: H264Conf):
         self.codec_conf = codec_conf
         self.frame_count = 0
-        self.reset_pts = False  # it decides whether to set both frame.pts and frame.time_base to be None
         self._forced_idr = None
-        if codec_conf.options and codec_conf.options.forced_idr:
+        self.reset_pts = False  # it decides whether to set both frame.pts and frame.time_base to be None
+        self.codec = None
+        self.codec_ctx = None
+        self.params = None
+        if codec_conf.width and codec_conf.height:
+            self.init_codec_ctx()
+        return
+
+    def init_codec_ctx(self, frame=None):
+        if self.codec_conf.options and self.codec_conf.options.forced_idr:
             self._forced_idr = ForcedIDR(nseconds=1)
-        self.codec = av.Codec(codec_conf.codec_name, "w")
+        if frame:
+            self.codec_conf.width = frame.width
+            self.codec_conf.height = frame.height
+        self.codec = av.Codec(self.codec_conf.codec_name, "w")
         self.codec_ctx = av.CodecContext.create(self.codec)
-        self.params = codec_conf.get_conf_params()
+        self.params = self.codec_conf.get_conf_params()
         for k, v in self.params.items():
             setattr(self.codec_ctx, k, v)
         self.codec_ctx.open()
@@ -109,6 +120,8 @@ class H264Encoder(EncoderAbs):
         return
 
     def encode(self, frame):
+        if not self.codec_ctx:
+            self.init_codec_ctx(frame)
         if frame is None:
             return self.codec_ctx.encode(None)
         self.frame_count += 1

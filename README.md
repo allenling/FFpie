@@ -2,81 +2,96 @@
 
 # FFpie
 
-an FFmpeg emulator built on PyAV that aims to mimic FFmpeg as much as possible.
+an FFmpeg emulator that aims to mimic FFmpeg as much as possible.
 
-it provides:
+FFpie is built on top of PyAV and provides:
 
-1. rich and friendly interfaces and toolkits.
+1. rich and user-friendly interfaces and tools more than simply exposing C code.
 
-2. FFmpeg transplantation of components, e.g. concat demuxer, frames sampling, etc.
+2. simple and cleaner Python implementation of FFmpeg features, including breakdown and mimicry of FFmpeg workflow,
+   concat demuxer, prev-encoding sampling, etc.
 
-3. simple modern modular design.
+3. simple and modern modular design gives better observability.
 
+# Motivation
 
-1.0 is based on PyAV-13.0.0 and FFmpeg-n6.1.1, but you should apply the patch to PyAV in the `patch` directory first, then
-build your own PyAV from the source.
+FFmpeg is probably one of the most prominent media processing applications in the world, it's fast and easy to use as a command line tool.
 
-and you can download FFmpeg-n6.1.1 from [here.](https://github.com/BtbN/FFmpeg-Builds/releases/)
+and FFmpeg is also complex in terms of readability, which imposes a heavy mental cognative load on people using it.
 
-# motivation
+and FFmpeg is written mostly by C/C++, that makes delving into the code base very daunting for many developers.
 
-in some cases, just mere interfaces exposed to python are not enough for us, and there are some key pices missing to run
-your code to process a video file as FFmpeg.
+here is where PyAV comes to help.
 
-e.g. by PyAV, you can easily push decoded frames to a graph, and pull filtered frames from the graph, but when frames come
-out the other end, they probably won't go immediately into the encoder in FFmpeg, they will be "sampled" before encoding!
+PyAV is a Pythonic binding for the FFmpeg libraries, that means PyAV exposes FFmpeg C code to Python making it easier to use. 
 
-you can imagine that there is a sampler conceptually standing in between your graph and the encoder, and it decides which frame
-should be sent to the encoder, some frames might be dropped or duplicated in certain sampling policy, or as known as fps_mode.
+you can write Python code that calls back and forth from and to FFmpeg C or C++ code natively at any point.
 
-so when you speed up or slow down your video, you might have to simple the frames yourself.
+PyAV does not offer a full and complete Python warpping of FFmpeg C code, and this is not required in order to use FFmpeg to
+run most media processing tasks.
 
-here we implement the cfr fps_mode in python, and in some cases, cfr is all you need, then you can just take it and make
-life easier.
+PyAV is a great and excellent tool making running FFmpeg in your Python code possible and simple rather than just running FFmpeg as a
+command line tool in another process.
 
-here is another example.
+but in its heart, PyAV is still just a sort of Python version of FFmpeg, you have to be familiar with FFmpeg to some extent to use
+PyAV effectively and efficiently.
 
-in real life, this is generic that we would run graphs in a cluster of GPU machines, and you have to store the graph and upload
-it to the cloud, the graph might be a very big and large piece of plain text, sometimes that long length won't bother you,
-but sometimes it matters.
+e.g. typically in FFmpeg workflow, you will run your filters on the input frames, and then before going to push those output
+frames into your encoder, FFmpeg will sample the frames to adjust dts and pts.
 
-here we introduce graph serialization to help you reduce the size, you can just serialize your graph to a short bytes array, and
-deserialize and run the graph anywhere, and take one step further, you can even say compress the serilaized bytes into a
-token string that is much shorter than the serialized string.
+this is called video sync method or framerate mode, and we just call it pre-encoding sampling.
 
-and to help you understand how FFmpeg works better, we break down FFmpeg video processing into three to four stages, and
-then we bridge those gaps between mere interfaces exposion and process flow integrity for you.
+you can tell FFmepeg to use different mode or method via `fps_mode` param to sample those frames to be encoding, the default option
+is called cfr, Constant Frame Rate.
 
-simply put, FFpie is an augment wrap to PyAV to enable you take advantage of full or a subset of FFmpeg programmatically.
+and this is omitted in PyAV, so in some cases, e.g. speed up a video file, you would find that there are some unexpected discrepancies
+in video quality and fps between the video file output by PyAV and the one processed by FFmpeg command line tool.
 
-# usage
+and why PyAV has not exposed this?
 
-(more in the `examples` directory)
+mainly because that that video sync method is hard to extract from FFmpeg, it's not just a few lines of code, or a few classes and
+objects.
 
-when trasncode your video, you can pass in your own encoder to do something before and after encoding a frame.
+that smapling process is embedded into a couple of places, and you have to have a clear grasp of how that sampling runs, and carefully
+pluck off particular lines of code.
 
-here an encoder is more than just a "pure" encoder, we will pass the frames out of your graph, or from decoder if no graph,
-into your encoder, then you can do anything before and after encoding.
+and even though you had wrapped those C functions and exposed them to Python, you probably still had to explain how to combine those
+functions together, and what parameters would be used for which scenario in order to apply that sampling process to your frames.
 
-`ffpie.H264Encoder` is a built-in encoder that is capable of labeling a frame as keyframe every N frames before encoding.
+this is not what PyAV for, PyAV is built for pure code exposing.
 
-and force_id feature is added as a solo plugin at `ffpie.encoder.utils`, which means you can adopt it without introducing
-other pieces of code.
+that's the pain for the adoption of FFmpeg for at least us. 
+
+so we take a step further, we decided to re-implement a couple of FFmpeg features in Python so that you do not have to get into the
+weeds and understand what's happening inside FFmpeg in order to adopt FFmpeg into your application.
+
+one of the goals of building FFpie is to make FFmpeg into a very simple piece of software that you can go and write, and we handle
+all of the complexity, or the undifferentiated problems of handling media processing in an app.
+
+# Requiremenets. 
+
+now FFpie is based on PyAV-13.0.0 and FFmpeg-n6.1.1, and you have to apply patches in `patches` directory before building PyAV from source.
+
+you can download FFmpeg-n6.1.1 binary file from [here.](https://github.com/BtbN/FFmpeg-Builds/releases/)
+
+# Usage
+
+open your video file, seek to a certain position, force idr, and encode the video frames, and write into the output file.
 
 ```python
 
 import ffpie
 
-s = ffpie.Source(path_to_your_video)
-codec_conf = ffpie.NVENCConf.get_default(width=s.width, height=s.height, framerate=s.frame_rate)
-print(codec_conf.get_conf_params())
-encoder = ffpie.H264Encoder(codec_conf)
+s = ffpie.Source("/path/to/your/video.mp4")
+codec_config = ffpie.NVENCConf.get_default(width=s.width, height=s.height, framerate=s.frame_rate)
+print(codec_config.get_conf_params())
+encoder = ffpie.H264Encoder(codec_config)
 # s.seek(10, 20.1)  # seek!
 # we want one keyframe per 45 frames.
 encoder.forced_idr_frames(45)
-# you employ OutContainer to do trivial things for you, such as encoding frames and muxing packets.
+# OutContainer would trivial things for you, such as encoding frames and muxing packets.
 with ffpie.OutContainer("oc_with_encoder.mp4",
-                        codec_conf=codec_conf,
+                        codec_conf=codec_config,
                         video_encoder=encoder,  
                         ) as oc:
     for idx, frame in enumerate(s.read_video_frames()):
@@ -85,46 +100,71 @@ with ffpie.OutContainer("oc_with_encoder.mp4",
 s.close()
 
 ```
-if you do not specify an encoder for your output container by leaving the parameter `video_encoder` alone, then oc will use the
-default video stream that created by the oc to encode the frames.
 
-you can serialize and deserialize your graph.
+link your filters in an intutive fashion.
+
+create edges of your graph first, and then connect the head to the tail.
 
 ```python
 
+import os
+import cv2 as cv
 import ffpie
-v1_path = r"D:\Downloads\yellowstone.mp4"
-v2_path = r"D:\Downloads\yosemiteA.mp4"
-v3_path = r"D:\Downloads\73602_85f0a86824d34462bb728c.png"
-s1 = ffpie.Source(v1_path)
-s2 = ffpie.Source(v2_path)
-lay_s = ffpie.ImageReader(v3_path)
-v1 = ffpie.Buffer(template=s1.video_stream, name="v1")
-v2 = ffpie.Buffer(template=s2.video_stream, name="v2")
-v3 = ffpie.Buffer(template=lay_s.stream, name="v3")
-#
-g = ffpie.Graph(v1, v3)
-b1_start, b1_end = g.link_filters(ffpie.Split(name="s1"))
-b2_start, b2_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.HFlip())
-b3_start, b3_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.VFlip())
-b4_start, b4_end = g.link_filters(ffpie.HStack(), ffpie.Overlay(name="o1"), ffpie.HFlip())
-g.link(b1_end, b2_start, 0, 0)
-g.link(b1_end, b3_start, 1, 0)
-g.link(b2_end, b4_start, 0, 0)
-g.link(b3_end, b4_start, 0, 1)
-#
-bytes_data, inputs = g.serialize()
-new_g = ffpie.Graph.deserialize(bytes_data)
-new_g.setup_inputs(*inputs)
+
+
+def build_and_run_graph():
+    """
+                   branc1          branc2                               brach4
+        x.mp4  -->  split --> scale --> hflip ------>  hstack ---> overlay --> hflip --> output
+                     |                                  ^             ^
+                     |                                  |             |
+                     +-----> scale --> vflip -----------+            png
+                           branch3
+
+    """
+    v1_path = r"x.mp4"
+    v2_path = r"y.mp4"
+    v3_path = r"z.png"
+    s1 = ffpie.Source(v1_path)
+    s2 = ffpie.Source(v2_path)
+    lay_s = ffpie.ImageReader(v3_path)
+    v1 = ffpie.Buffer(template=s1.video_stream)
+    v2 = ffpie.Buffer(template=s2.video_stream)
+    v3 = ffpie.Buffer(template=lay_s.stream)
+    #
+    g = ffpie.Graph(v1, v3)
+    # build branches first
+    b1_start, b1_end = g.link_filters(ffpie.Split())
+    b2_start, b2_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.HFlip())
+    b3_start, b3_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.VFlip())
+    b4_start, b4_end = g.link_filters(ffpie.HStack(), ffpie.Overlay(), ffpie.HFlip())
+    g.link(b1_end, b2_start, 0, 0)
+    g.link(b1_end, b3_start, 1, 0)
+    g.link(b2_end, b4_start, 0, 0)
+    g.link(b3_end, b4_start, 0, 1)
+    #
+    g.nb_threads = os.cpu_count()
+    print("graph nb_threads", g.nb_threads)
+    for f1, f2 in zip(s1.read_video_frames(), lay_s.read_video_frames()):
+        outframe = g.apply_frames(f1, f2)[0]
+        cv_frame = outframe.to_ndarray(format='bgr24')
+        cv.imshow("12", cv_frame)
+        cv.waitKey(1)
+    lay_s.close()
+    s1.close()
+    s2.close()
+    return
 ```
 
-speed up your video, and apply the cfr sampler to frames coming out from the graph.
+sample the frames out from your graph before encoding.
+
+you can use that standalone CFR sampler independently.
 
 ````python
 
 import ffpie
 
-s = ffpie.Source(path_to_your_video)
+s = ffpie.Source("/path/to/your/video.mp4")
 # we will link buffers and buffersinks for you when apply_frames being called, callling g.configure is an option.
 g = ffpie.Graph(ffpie.Buffer(template=s.video_stream))
 # link filters one by one in link_filters method.
@@ -149,148 +189,111 @@ with ffpie.OutContainer("speed_video.mp4",
 s.close()
 ````
 
-maybe you can't be bothered to anything but just few settings, `ffpie.Clip` comes to help.
+maybe you can't be bothered to do all those trivial things, use `ffpie.Clip`.
+
+`Clip` will do all the things for you, all you have to do pass in your options.
 
 ```python
 
 import ffpie
 
-s = ffpie.Source(path_to_your_video)
+s = ffpie.Source("/path/to/your/video.mp4")
 vcodec_conf = ffpie.NVENCConf.get_default(width=s.width, height=s.height)
-# you can specify your encoder class/object for your video track,
-# or you can just leave encoder_cls as None, just use default encoder that's used by PyAV itself.
 vt = ffpie.VideoTrack(input_sources=[s], codec_conf=vcodec_conf, encoder_cls=ffpie.H264Encoder)
 
-# create a mp4 file, and add that your video track to it.
-my_clip = ffpie.Clip("my_clip.mp4")
+my_clip = ffpie.Clip("my_clip.mp4")  # output file path.
 my_clip.add_video_track(vt)
 my_clip.run()
 ```
 
-a clip will do most of the things for you, setting up framerate for the output file, choosing a frames sampler, and whatnot.
+maybe in some cases you want to serialize and deserialize your graph.
 
-# breakdowns on FFmpeg
+```python
 
-the following diagram shows the stages into which we can divide FFmpeg processing flow.
+import cv2 as cv
 
-```
+import ffpie
+
+from ffpie.graph.token import RedisToken
 
 
-video1 ===> deocder ===> frames 
-video2 ===> deocder ===> frames   ====>  graph(filtering) ====> sampler ===> encoder ===> packets
-video3 ===> decoder ===> frames 
-...
-
-```
-
-one or multiple collections of frames are being decoded from input videos, and then going into the graph,
-and then filtered frames out from the graph will be put into the sampler that will drop or duplicate frames, and then frames
-will finally be encoded by the encoder.
-
-as you can see, the flow is quite easy to understand, and PyAV offers a good code expose and wrapping so that you can directly
-access FFmpeg functions and structures, which is amazing considering how complated FFmpeg is. 
-
-but it's noteworthy that this is incomplete.
-
-PyAV is not a full copy of FFmpeg, it gives you the ability of passing objects into FFmpeg functions, and calling those functions,
-and getting data back.
-
-but in some cases that is not enough if you want to ensure your code run exactly, or as close as FFmpeg.
-
-why don't we just expoe everything?
-
-it is too difficult and, from our opinions, unnecessary, and exposing everything will be equivalent of using FFmpeg command line.
-
-that's hard partly because there is no such a clear delineation between two adjacent stages, and there are not two, maybe
-three functions that you can just call then get the results, like calling three functions after a frame out of a graph to do
-the sampling.
-
-no, there are actually code snippets scattered in code base together, and each of them is going more than one thing, and dealing
-with many edge conditions.
-
-but let's look at this in this way, it is the fact that in many cases, we only need a subset of those features.
-
-here is an example.
-
-a graph has to be configured before enqueuing and dequeuing frames. and you can call the configure method on that graph in PyAV.
-
-it's true that FFmpeg will call that method as well, but FFmpeg also do some extra pieces of work.
-
-e.g. it will insert one more filter before the buffersink/abuffersink, that filter is called format or aformat depending on the
-type of your sink filter.
-
-bascially a format, or aformt filter does is just transformat the frames to the default video or audio frame format, which
-are yuv420p and fltp respectively.
-
-and obviously, this is actually a trivial operation because when you build or form your graph you know what you are doing, you
-have your graph in mind, and know what your graph exactly looks like.
-
-so we do not have to copy-paste such thing, and the cfr sampler that we have mentioned is another good example.
-
-the fps_mode implementation in FFmpeg involves many steps, it has to consider all four policies that FFmpeg supports.
-
-in our case, at least for now, cfr is one that we only need, and cfr is also one of those basic policies, and is incorporated
-
-into many products, cfr is must-have to people.
-
-we can pluck the cfr sampler from FFmpeg without exposing every piece of code, if we get the underlying idea by
-
-analyzing its source code.
-
-and you can find that analysis on `docs/how_FFmpeg_speeds_up_a_video.md`, there we trace the invoking chain to the bottom to
-
-unveil how FFmpeg works by the example of speeding up a video.
-
-## clips
-
-when you get the packets out of the encoder, you can write them into a container, whether it is a mp4 file, or an avi, or
-some other format, here we call it a clip.
-
-of course, a container has more than just packets including other metadata, but here this is rather a conceptual abstraction.
-
-simply put, a container, or a clip contains the packets encoded by an encoder, two clips are the same if and only if they
-have the same set of components, the graph, and the sampler, and the encoder with specific configuration, and the input videos.
-
-it can be a video clip that holds only video packets, or an audio clip that has only audio bytes inside, or a mixed clip.
-
-by the way, one of the differences lies between video editing and video sharing platforms such as YouTube is that you do not
-pre-transocode your original video, in our opinions, because transocding a sequence of frames means you want to stitch them and
-other frames together.
-
-e.g. if you just want the frames from 10s to 20s, why transocde the entire video?
-
-## tracks and concatenation
-
-maybe, a single clip is what you want since a clip is also a video file, like transcoding a video, or cutting a portion of
-the video and rotating frames, etc.
-
-but often to get the video you want, you have to concatenate multiple clips, more specifically, you are chaining the video
-packets in each clip one by one from left to right, and chaining audio packets in those clips one by one.
-
-remember when taking about clips, videos, we are talking about manipulating the tracks, or the streams in PyAV.
+def graph_serialization():
+   v1_path = r"D:\Downloads\yellowstone.mp4"
+   v2_path = r"D:\Downloads\yosemiteA.mp4"
+   v3_path = r"D:\Downloads\73602_85f0a86824d34462bb728c.png"
+   s1 = ffpie.Source(v1_path)
+   s2 = ffpie.Source(v2_path)
+   lay_s = ffpie.ImageReader(v3_path)
+   v1 = ffpie.Buffer(template=s1.video_stream, name="v1")
+   v2 = ffpie.Buffer(template=s2.video_stream, name="v2")
+   v3 = ffpie.Buffer(template=lay_s.stream, name="v3")
+   #
+   g = ffpie.Graph(v1, v3)
+   b1_start, b1_end = g.link_filters(ffpie.Split(name="s1"))
+   b2_start, b2_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.HFlip())
+   b3_start, b3_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.VFlip())
+   b4_start, b4_end = g.link_filters(ffpie.HStack(), ffpie.Overlay(name="o1"), ffpie.HFlip())
+   g.link(b1_end, b2_start, 0, 0)
+   g.link(b1_end, b3_start, 1, 0)
+   g.link(b2_end, b4_start, 0, 0)
+   g.link(b3_end, b4_start, 0, 1)
+   #
+   bytes1, leaves1 = g.serialize()
+   print(bytes1)
+   print(leaves1)
+   g.mark_input_output()
+   bytes2, leaves2 = g.serialize()
+   print(bytes2)
+   print(leaves2)
+   print(bytes1 == bytes2)
+   inputs = [v1, v2, v3]
+   inputs_map = {}
+   for i in inputs:
+      inputs_map[i.name] = i
+   preorder_inputs = []
+   for fname, _ in leaves2:
+      preorder_inputs.append(inputs_map[fname])
+   print(preorder_inputs)
+   new_g = ffpie.Graph.deserialize(bytes2)
+   bytes3, leaves3 = new_g.serialize()
+   print(bytes3)
+   print(leaves3)
+   print(bytes1 == bytes3)
+   new_g.set_inputs(*preorder_inputs)
+   bytes4, leaves4 = new_g.serialize()
+   print(bytes4)
+   print(leaves4)
+   print(bytes1 == bytes4)
+   #
+   redis_token = RedisToken()
+   redis_token.con.delete(redis_token.chunk_zset_key)
+   redis_token.con.delete(redis_token.chunk_amount_key)
+   bytes5, leaves5 = new_g.serialize()
+   token1 = redis_token.get_token(bytes5)
+   print(token1)
+   print(leaves5)
+   print(bytes1 == bytes5)
+   #
+   bytes6 = redis_token.from_token(token1)
+   tg = ffpie.Graph.deserialize(bytes6)
+   bytes7, leaves7 = tg.serialize()
+   print(bytes7)
+   print(leaves7)
+   print(bytes1 == bytes7)
+   tg.set_inputs(*preorder_inputs)
+   #
+   for f1, f2 in zip(s1.read_video_frames(), lay_s.read_video_frames()):
+      outframe = tg.apply_frames(f1, f2)[0]
+      cv_frame = outframe.to_ndarray(format='bgr24')
+      cv.imshow("12", cv_frame)
+      cv.waitKey(1)
+   s1.close()
+   lay_s.close()
+   return
 
 ```
 
-                                                        video
-video = clip1 + clip2 + clip3,...  ====>     video track:   clip1, clip2, clip3, ...
-                                             audio track:   clip1, clip2, clip3, ...
+# Implementation details
 
+for more details on implementation, check out implementation.md
 
-
-```
-
-and FFmpeg introduces an approach named concat demuxer, and how FFmpeg implements concat demuxing is described in
-`docs/ffmpeg_concat_demuxer.md`.
-
-and what's important to keep in mind is that your video will display correctly from left to right starting at time 0 when
-linking multiple clips.
-
-but it will go wrong when you jump into another time point, e.g. you might get glitches when you fast-forward/backward you
-video, if you did not encode them with the same configuration.
-
-
-# TODO
-
-1. translate FFmpeg filter_complex strings to a Graph object.
-
-2. VPF integration.

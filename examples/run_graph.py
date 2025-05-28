@@ -56,14 +56,14 @@ def run_graph_and_encode():
     return
 
 
-def run_complicated_graph():
+def build_and_run_graph():
     """
-                 branc1          branc2                       brach4
+                 branc1          branc2                                brach4
         mp4  -->  split --> scale --> hflip ------>  hstack ---> overlay --> hflip --> output
                     |                                ^             ^
                     |                                |             |
                     +-----> scale --> vflip ---------+            png
-                           branch3
+                              branch3
 
     """
     v1_path = r"D:\Downloads\yellowstone.mp4"
@@ -74,7 +74,7 @@ def run_complicated_graph():
     lay_s = ffpie.ImageReader(v3_path)
     v1 = ffpie.Buffer(template=s1.video_stream)
     v2 = ffpie.Buffer(template=s2.video_stream)
-    v3 = ffpie.Buffer(template=lay_s.stream)
+    v3 = ffpie.Buffer(template=lay_s.video_stream)
     #
     """
     specify inputs by the order of being added into the graph.
@@ -91,13 +91,18 @@ def run_complicated_graph():
     b2_start, b2_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.HFlip())
     b3_start, b3_end = g.link_filters(ffpie.Scale(width="iw/2", height="ih"), ffpie.VFlip())
     b4_start, b4_end = g.link_filters(ffpie.HStack(), ffpie.Overlay(), ffpie.HFlip())
+    print(b1_end, b2_start)
+    print(b1_end, b3_start)
+    print(b2_end, b4_start)
+    print(b3_end, b4_start)
+    #
     g.link(b1_end, b2_start, 0, 0)
     g.link(b1_end, b3_start, 1, 0)
     g.link(b2_end, b4_start, 0, 0)
     g.link(b3_end, b4_start, 0, 1)
     #
-    print("graph nb_threads", g.nb_threads)
     g.nb_threads = os.cpu_count()
+    print("graph nb_threads", g.nb_threads)
     for f1, f2 in zip(s1.read_video_frames(), lay_s.read_video_frames()):
         outframe = g.apply_frames(f1, f2)[0]
         cv_frame = outframe.to_ndarray(format='bgr24')
@@ -112,7 +117,7 @@ def run_complicated_graph():
 def main():
     # scale_and_vflip()
     # run_graph_and_encode()
-    run_complicated_graph()
+    build_and_run_graph()
     return
 
 

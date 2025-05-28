@@ -217,7 +217,7 @@ class ImageReader(StoppableClass):
         self.duration = duration
         self.container = av.open(path)
         self.frame = next(self.container.decode(video=0))
-        self.stream = self.container.streams.video[0]
+        self.video_stream = self.stream = self.container.streams.video[0]
         self.frame.time_base = fractions.Fraction(1, fps) if fps else self.container.streams.video[0].time_base
         self.frame.pts = 0
         return
@@ -336,6 +336,44 @@ class OutContainer:
     @property
     def acodec_ctx(self):
         return self.audio_encoder.codec_context
+
+
+
+class PacketOutContainer:
+
+    def __init__(self):
+        self.video_encoder = None
+        self.audio_encoder = None
+        return
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return
+
+    def add_stream(self, *args, **kwargs):
+        return
+
+    def mux_one_video_frame(self, frame):
+        for packet in self.video_encoder.encode(frame):
+            yield packet
+        return
+
+    def flush_video(self):
+        for packet in self.video_encoder.encode(None):
+            yield packet
+        return
+
+    def mux_one_audio_frame(self, frame):
+        for packet in self.audio_encoder.encode(frame):
+            yield packet
+        return
+
+    def flush_audio(self):
+        for packet in self.audio_encoder.encode(None):
+            yield packet
+        return
 
 
 def main():

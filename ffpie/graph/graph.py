@@ -187,7 +187,7 @@ class Graph:
     def link_filters(self, *filters: FilterConfAbs):
         return self._link_filters(*filters)
 
-    def setup_outputs(self):
+    def set_outputs(self):
         if not self._o_sinks:
             linking_keys = list(self._linking_map.keys())
             for idx in linking_keys:
@@ -202,7 +202,7 @@ class Graph:
                     self.add_output(idx, i)
         return
 
-    def setup_inputs(self, *input_confs):
+    def set_inputs(self, *input_confs):
         if not self._i_buffers and input_confs:
             conf_idx = 0
             reversed_keys = list(self._reversed_linking_map.keys())
@@ -219,16 +219,16 @@ class Graph:
                     conf_idx += 1
         return
 
-    def setup_input_output(self, *input_confs):
+    def mark_input_output(self, *input_confs):
         input_confs = input_confs or self.input_confs
-        self.setup_inputs(*input_confs)
-        self.setup_outputs()
+        self.set_inputs(*input_confs)
+        self.set_outputs()
         return
 
     def configure(self, *input_confs):
         if self.configured:
             return
-        self.setup_input_output(*input_confs)
+        self.mark_input_output(*input_confs)
         if not self.avgraph.configured:
             self.avgraph.configure()
         return
@@ -393,7 +393,7 @@ class Graph:
         return g
 
     def serialize(self):
-        self.setup_outputs()
+        self.set_outputs()
         if len(self._out_filters) > 1 or len(self._o_sinks) > 1:
             raise KeyError("do not support serialize a graph with more than one sinks")
         branches, leaves = self.preorder_traversal()
@@ -405,62 +405,6 @@ class Graph:
             branches = msgpack.loads(branches)
         g = cls.from_branches(branches)
         return g
-
-    def get_token_list(self, graph_bytes, redis_con):
-        slices = [graph_bytes[i*self.slice_size:(i+1)*self.slice_size] for i in range(len(graph_bytes)//self.slice_size + 1)]
-        params = []
-        for idx, chunk in enumerate(slices):
-            chunk_zset = self.chunk_zset_key.format(idx=idx)
-            params.append([chunk_zset, chunk])
-        pipeline = redis_con.pipeline()
-        for chunk_zset, chunk in params:
-            pipeline.zscore(chunk_zset, chunk)
-        ret = pipeline.execute()
-        missing_keys = []
-        token = []
-        for idx, num in enumerate(ret):
-            if num is None:
-                missing_keys.append([idx, slices[idx]])
-                sc = None
-            else:
-                sc = str(int(num))
-            token.append(sc)
-        if not missing_keys:
-            return token
-        for idx, chunk in missing_keys:
-            key = self.chunk_amount_key.format(idx=idx)
-            pipeline.incrby(key)
-        ret = pipeline.execute()
-        for num, info in zip(ret, missing_keys):
-            idx, chunk = info
-            chunk_zset = self.chunk_zset_key.format(idx=idx)
-            pipeline.zadd(chunk_zset, mapping={chunk: num}, nx=True)
-        pipeline.execute()
-        for idx, chunk in missing_keys:
-            chunk_zset = self.chunk_zset_key.format(idx=idx)
-            pipeline.zscore(chunk_zset, chunk)
-        ret = pipeline.execute()
-        for num, info in zip(ret, missing_keys):
-            chunk_idx = info[0]
-            token[chunk_idx] = str(int(num))
-        return token
-
-    def tokenize(self, redis_con):
-        graph_bytes, leaves = self.serialize()
-        token = self.get_token_list(graph_bytes, redis_con)
-        return "_".join(token), leaves
-
-    @classmethod
-    def from_token(cls, token, redis_con):
-        chunks = token.split("_")
-        p = redis_con.pipeline()
-        for index, num in enumerate(chunks):
-            key = cls.chunk_zset_key.format(idx=index)
-            num = int(num)
-            p.zrangebyscore(key, min=num, max=num)
-        ret = p.execute()
-        data = b"".join([i[0] for i in ret])
-        return cls.deserialize(data)
 
 
 def main():

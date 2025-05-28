@@ -1,7 +1,7 @@
 
 
 
-from .h264 import H264Conf, H264Opts, NVENCConf, H264Encoder
+from .h264 import H264Conf, H264Opts, NVENCConf, NVENCOpts, H264Encoder
 from .aac import AACConf, AACEncoder
 
 
