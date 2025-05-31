@@ -35,10 +35,9 @@ command line tool in another process.
 but in its heart, PyAV is still just a sort of Python version of FFmpeg, you have to be familiar with FFmpeg to some extent to use
 PyAV effectively and efficiently.
 
-for instance, in FFmpeg workflow, you will run your filters on the input frames, and then before going to push those output
-frames into your encoder, FFmpeg will sample the frames to adjust dts and pts.
+for instance, in FFmpeg's workflow, you run your filters on the input frames, and then before going to push those filtered frames into your encoder, FFmpeg will sample the frames.
 
-this is called video sync method or framerate mode, and we just call it pre-encoding sampling.
+this is called video sync method, and we call it pre-encoding sampling, this simpling will drop or insert frames to produce the video at particular fps. 
 
 you can tell FFmepeg to use different mode or method via `fps_mode` param to sample those frames to be encoding, the default option
 is called cfr, Constant Frame Rate.
