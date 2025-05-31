@@ -57,7 +57,7 @@ this is not what PyAV for, PyAV is built for pure code exposing.
 
 that's the pain of the adoption of FFmpeg for at least us. 
 
-so we take a step further, we decided to re-implement a couple of FFmpeg features, CFR included, in Python so that you do not have to get into the
+so we took a step further, we decided to re-implement a couple of FFmpeg features, CFR included, in Python so that you do not have to get into the
 weeds to what's happening inside FFmpeg in order to adopt FFmpeg into your application.
 
 one of the goals of building FFpie is to make FFmpeg into a very simple piece of software that you can go and write, and we handle
