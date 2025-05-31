@@ -39,7 +39,7 @@ for instance, in FFmpeg's workflow, you run your filters on the input frames, an
 
 this is called video sync method, and we call it pre-encoding sampling, this simpling will drop or insert frames to produce the video at particular fps. 
 
-you can tell FFmepeg to use different mode or method via `fps_mode` param to sample those frames to be encoding, the default option
+you can tell FFmepeg to use different mode or method via `fps_mode` param to sample those frames to be encoded, the default option
 is called cfr, Constant Frame Rate.
 
 and this is omitted in PyAV, so in some cases, e.g. speeding up a video file, you would find that there are some unexpected discrepancies
