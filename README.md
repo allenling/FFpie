@@ -47,21 +47,18 @@ in frame quality and video fps between the video file outputed by PyAV and the v
 
 and why PyAV has not exposed this?
 
-mainly because that that video sync method is hard to extract from FFmpeg, it's not just a few lines of code, or a few classes and
+mainly because that that video sync method is hard to be extracted from FFmpeg, it's not just a few lines of code, or a few classes and
 objects.
 
 that smapling process is embedded into a couple of places, and you have to have a clear grasp of how that sampling runs, and carefully
-pluck off particular lines of code.
-
-and even though you had wrapped those C functions and exposed them to Python, you probably still had to explain how to combine those
-functions together, and what parameters would be used for which scenario in order to apply that sampling process to your frames.
+pluck off particular lines of code, and combine them together in Python.
 
 this is not what PyAV for, PyAV is built for pure code exposing.
 
-that's the pain for the adoption of FFmpeg for at least us. 
+that's the pain of the adoption of FFmpeg for at least us. 
 
-so we take a step further, we decided to re-implement a couple of FFmpeg features in Python so that you do not have to get into the
-weeds and understand what's happening inside FFmpeg in order to adopt FFmpeg into your application.
+so we take a step further, we decided to re-implement a couple of FFmpeg features, CFR included, in Python so that you do not have to get into the
+weeds to what's happening inside FFmpeg in order to adopt FFmpeg into your application.
 
 one of the goals of building FFpie is to make FFmpeg into a very simple piece of software that you can go and write, and we handle
 all of the complexity, or the undifferentiated problems of handling media processing in an app.
