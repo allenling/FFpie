@@ -8,8 +8,7 @@ FFpie is built on top of PyAV and provides:
 
 1. rich and user-friendly interfaces and tools more than simply exposing C code.
 
-2. simple and cleaner Python implementation of FFmpeg features, including breakdown and mimicry of FFmpeg workflow,
-   concat demuxer, prev-encoding sampling, etc.
+2. simpler Python implementation of FFmpeg features, including mimicry of FFmpeg workflow, concat demuxer, video sync sampling, etc.
 
 3. simple and modern modular design gives better observability.
 
