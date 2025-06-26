@@ -74,7 +74,7 @@ and actually you can further shorten the serialized string of the graph.
 a simple and interesting apporach is split the serialized string into multiple portions of equal size, and calculate a hash or
 id for every portion, and concatenate all the ids.
 
-one approach we employed is to use redis to store those portions in sperately sorted sets.
+one approach we employed was use redis to store those portions in sperately sorted sets.
 
 for instance, suppose that the serialized string is divided into 5 smaller chunks, each chunk has a size of 100.
 
