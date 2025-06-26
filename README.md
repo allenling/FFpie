@@ -22,11 +22,12 @@ and FFmpeg is written mostly by C/C++, that makes delving into the code base ver
 
 here is where PyAV comes to help.
 
-PyAV is a Pythonic binding for the FFmpeg libraries, that means PyAV exposes FFmpeg C code to Python making it easier to use. 
+PyAV is a Pythonic binding for FFmpeg, meaning PyAV exposes FFmpeg C code to Python, so that you can write Python code
+and interact directly with FFmpeg.
 
-you can write Python code that calls back and forth from and to FFmpeg C or C++ code natively at any point.
+you can pass your parameters and call an FFmpeg function, and PyAV will turn the output from that function into Python data structure for you.
 
-PyAV does not offer a full and complete Python warpping of FFmpeg C code, and this is not required in order to use FFmpeg to
+but PyAV does not offer a full and complete Python warpping of FFmpeg C code, and this is not required in order to use FFmpeg to
 run most media processing tasks.
 
 PyAV is a great and excellent tool making running FFmpeg in your Python code possible and simple rather than just running FFmpeg as a
