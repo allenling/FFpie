@@ -46,8 +46,8 @@ class RedisToken(TokenCls):
         if not missing_keys:
             return "_".join(token)
         for idx, chunk in missing_keys:
-            chunk_zset = self.chunk_zset_key.format(idx=idx)
-            pipeline.zcard(chunk_zset)
+            chunk_amount_key = self.chunk_amount_key.format(idx=idx)
+            pipeline.incrby(chunk_amount_key)
         ret = pipeline.execute()
         for num, chunk_info in zip(ret, missing_keys):
             idx, chunk = chunk_info
