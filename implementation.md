@@ -39,6 +39,8 @@ output container:         video stream                 audio stream
 
 ```
 
+and without the help of that programmatcial interfaces, you will not be able to control your encoding flow in such a
+fine-grained fashion.
 
 # graph serialization
 
@@ -65,63 +67,56 @@ to have a unique path for the filter.
 
 and then DFS is a feasiable algorithm to use to traverse the tree in order to get that unqiue serialization result. 
 
+## Tokenization
+
 and actually you can further shorten the serialized string of the graph. 
 
-a simple and fun apporach is split the serialized string into multiple portions of equal size, and calculate a hash or id for every
-portion, and concatenate all the ids.
+a simple and interesting apporach is split the serialized string into multiple portions of equal size, and calculate a hash or
+id for every portion, and concatenate all the ids.
 
-one approach we employed is use redis to store those portions in serveral sorted sets.
+one approach we employed is to use redis to store those portions in sperately sorted sets.
 
-and every portion or chunk will be assigned a socre that is the position of that chunk in the sorted set.
+for instance, suppose that the serialized string is divided into 5 smaller chunks, each chunk has a size of 100.
 
-e.g. suppose we have five chunks, `c1`, `c2`, `c3`, `c4`, `c5`, and they are going to be put into five sorted sets, `s1`, `s2`, `s3`,
-`s4`, `s5` respectively.
+and then there will be 5 sorted sets to store those subchunks, and the first chunk, the first 100 characters will be saved in
+first sorted set named s1, and the second subchunk will be stored in the second sorted set named s2, and so on.
 
-```
-serialized string: c1c2c3c4c5
-sorted sets      : s1s2s3s4s5   
-```
+the idea is that the token for a chunk in the sorted set will be its index in the sorted set.
 
-and to calculate the id for chunk `c1`, first get the assoicated score of `c1` in `s1`.
+but sortedsets are not lists, items are unordered in a sorted set, meaning you can not access the items left to right one by one.
 
-if `c1` is in `s1` already, then its score will be the id for `c1`.
+you can not access the first, the third, or the fifth item in a sorted set.
 
-if `c1` is not in `s1`, then get the total number of items in `s1`.
+how can you determine the index for an item? 
 
-suppose there are five items in `s1` now, and that number will be the score for `c1` in `s1`, and then push `c1` into `s1` with a score of 5.
+as sortedsets hold scores for all the items, so you can assign the item a score, which can be viewed as the index for the item.
 
-connecting those ids one after one you will have a unique token for that serialized string.
+suppose sorted set `s1` has 5 items right now, and for a newly inserted item, its index or score will be 6.
 
-to deserailize a given string, just repeat the procedure but in reverse.
+but there's a couple of problems.
 
-for each id in the token, send a command `zrangebyscore` to redis to get the key by the score or the id, and the key will be the chunk.  
+first, there's a chance that two clients assign same score or index for two different keys.
 
-and joining all the chunks you will get the complete original serialized string.
+actually it's highly likely in a concurrent system, for instance, client A asked redis for the size of the sorted set `s1`,
+and redis returned it 5, and client B asked redis for the size of `s1`, it would get 5.
 
-as you can imagine, this might cause a concurrent problem of inconsistent data when there are two different serialized strings bearing
-the same portion at the same position.
+then client A would add key `k1` into `s1` with a score of 6, and client B would add key `k2` into `s1` as well with the
+same score of 6, a conflict happens.
 
-suppose we have two serialized strings, `str1` and `str2`, and they are both starting with a chunk of `cx`.
+so to solve this problem, we introduce another key, a key represents the size of the sorted set, let's call this key the amount key.
 
-and suppose `cx` is not in the sorted set `s1`, and `s1` contains 6 items right now.
+so to get the score of an item, we would not rely on redis for the size, we just increase the amount key by 1.
 
-so `str1` and `str2` both know the fact that `cx` is a new item for `s1` and start to put `cx` in `s1. 
+since redis processes commands concurrently meaning each comand will be processed atomically, so client A and client B will
+have different scores for their keys.
 
-and first, `str1` will ask `s1` the number of items in `s1`, it will have 6 in return, and `str1` will assign a score of 6 to the
-chunk `cx`, and now `s1` contains 7 items in total.
+and there's another dirty data scenario where two clients trying to add the same key into the sorted set.
 
-and then `str2` make a query to `s1` how many items it has in it, and `str2` will get 7 in return, and `st2` will assoicate `cx` with
-a score of 7.
+and since clients would always get different scores from that amount key, them the score for the key would be covered later.
 
-then the id that `str1` got for the chunk `cx` has changed.
+to prevent this from happening, you can set the `NX` option to be true when you call the command `sadd`, then redis would insert
+new item only, and if that item is already existed in the sorted set, then redis would decide not to perform the `sadd` action.
 
-luckily, redis can help us with this inconsistency.
-
-all we have to do is set the paramter `nx` as `True` for function `zadd` that you use to add a chunk to the sorted set.
-
-`nx` will prevent `str2` from setting a score of 7 for `cx` because `cx` is already in there.
-
-and `str1` and `str2` will have to request redis one more time to get the latest score assigned to `cx`.  
 
 # CFR sampling
 
